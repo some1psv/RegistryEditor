@@ -16,7 +16,7 @@ all: $(TARGET).vpk
 
 %.vpk: eboot.bin
 	vita-mksfoex -s TITLE_ID=$(TITLE_ID) "$(TARGET)" param.sfo
-	vita-pack-vpk -s param.sfo -b eboot.bin $@
+	vita-pack-vpk -s param.sfo -s icon0.png -b eboot.bin $@
 
 eboot.bin: $(TARGET).velf
 	vita-make-fself $< $@
@@ -32,7 +32,7 @@ $(TARGET).elf: $(OBJS)
 
 clean:
 	@rm -rf $(TARGET).vpk $(TARGET).velf $(TARGET).elf $(OBJS) \
-		eboot.bin param.sfo
+		eboot.bin param.sfo icon0.png
 
 vpksend: $(TARGET).vpk
 	curl -T $(TARGET).vpk ftp://$(PSVITAIP):1337/ux0:/aInstaller/
