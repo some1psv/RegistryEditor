@@ -16,7 +16,9 @@ all: $(TARGET).vpk
 
 %.vpk: eboot.bin
 	vita-mksfoex -s TITLE_ID=$(TITLE_ID) "$(TARGET)" param.sfo
-	vita-pack-vpk -s param.sfo -b eboot.bin $@
+	vita-pack-vpk -s param.sfo -b eboot.bin \
+		--add icon0.png=sce_sys/icon0.png \
+	$(TARGET).vpk
 
 eboot.bin: $(TARGET).velf
 	vita-make-fself $< $@
