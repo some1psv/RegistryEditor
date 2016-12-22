@@ -10,6 +10,10 @@
 #include "main.h"
 #include "ime_dialog.h"
 
+// Store positions so that the right item is selected when the user presses the back button
+int curPosList[10] = {0};
+int posInd = 0;
+
 char* regData[][3] =
 {
 	{"/REGISTRY/ERROR/", "err_enable", "\x01"},
@@ -924,7 +928,8 @@ int regMgrGetKeyInt(char *path, char *keyName)
 
 int main()
 {
-	int curPos = 1, curSize = 0, top = 0, ret = 0, imeStatus = 0, keyIndex = 0;
+	curPosList[0] = 1;
+	int curSize = 0, top = 0, ret = 0, imeStatus = 0, keyIndex = 0;
 	int holdButtons = 0, pressedButtons = 0;
 	int writeRet = 0;
 	char buf[2048];
@@ -975,14 +980,14 @@ int main()
 		drawScrollBar(top, curSize);
 		
 		if(curDir->parent && !top)
-			vita2d_pgf_draw_text(pgf, 20.0f, 4.0f * FONT_Y_SPACE, (!curPos) ? GREEN : CYAN, FONT_SIZE, "..");
+			vita2d_pgf_draw_text(pgf, 20.0f, 4.0f * FONT_Y_SPACE, (!curPosList[posInd]) ? GREEN : CYAN, FONT_SIZE, "..");
 		
 		for(int i = top; i < curDir->numSubDirs && (i - top) < MAX_POSITION; i++)
 		{
 			uint32_t color = CYAN;
 			float y = (5.0f * FONT_Y_SPACE) + ((i - top) * FONT_Y_SPACE);
 			
-			if(i == curPos - 1)
+			if(i == curPosList[posInd] - 1)
 				color = GREEN;
 			
 			vita2d_pgf_draw_text(pgf, 20.0f, y, color, FONT_SIZE, curDir->subdirs[i]->name + strlen(curDir->name));
@@ -995,7 +1000,7 @@ int main()
 			
 			if(curDir->keys[i]->keyType == KEY_TYPE_BIN)
 				color = RED;
-			if(i == curPos - 1 - curDir->numSubDirs)
+			if(i == curPosList[posInd] - 1 - curDir->numSubDirs)
 				color = GREEN;
 			
 			if(curDir->keys[i]->keyType == KEY_TYPE_INT)
@@ -1051,41 +1056,43 @@ int main()
 		
 		if(holdButtons & SCE_CTRL_DOWN || holdButtons & SCE_CTRL_LEFT_ANALOG_DOWN)
 		{			
-			curPos = (curPos + 1) % curSize;
+			curPosList[posInd] = (curPosList[posInd] + 1) % curSize;
 			
-			if(curPos - top >= MAX_POSITION && curSize > MAX_POSITION && top < (curSize - MAX_POSITION - 1))
+			if(curPosList[posInd] - top >= MAX_POSITION && curSize > MAX_POSITION && top < (curSize - MAX_POSITION - 1))
 				top++;
-			else if(curPos == 0 && curSize > MAX_POSITION)
+			else if(curPosList[posInd] == 0 && curSize > MAX_POSITION)
 				top = 0;
 		}
 		else if(holdButtons & SCE_CTRL_UP || holdButtons & SCE_CTRL_LEFT_ANALOG_UP)
 		{
-			if(--curPos < 0)
+			if(--curPosList[posInd] < 0)
 			{
-				curPos = curSize - 1;
+				curPosList[posInd] = curSize - 1;
 				
 				if(curSize > MAX_POSITION)
 				top = curSize - MAX_POSITION - 1;
 			}
 			
-			if(curPos <= top && top && curSize > MAX_POSITION)
+			if(curPosList[posInd] <= top && top && curSize > MAX_POSITION)
 				top--;
 		}
 		
 		if(pressedButtons & SCE_CTRL_CROSS)
 		{
-			if(curPos == 0)
+			if(curPosList[posInd] == 0)
 			{
-				if(curDir->parent)
+				if(curDir->parent) {
+					posInd--;
 					curDir = curDir->parent;
+				}
 				
-				curPos = 0;
+				curPosList[posInd] = 0;
 				top = 0;
 			}
-			else if(curPos - 1 < curDir->numSubDirs && curDir->numSubDirs > 0)
+			else if(curPosList[posInd]- 1 < curDir->numSubDirs && curDir->numSubDirs > 0)
 			{
-				curDir = curDir->subdirs[curPos - 1];
-				curPos = 0;
+				curDir = curDir->subdirs[curPosList[posInd] - 1];
+				curPosList[++posInd] = 0;
 				top = 0;
 			}
 			else
@@ -1093,21 +1100,21 @@ int main()
 				ret = -1;
 				memset(buf, 0, 2048);
 				
-				if(curDir->keys[curPos - 1 - curDir->numSubDirs]->keyType == KEY_TYPE_INT)
+				if(curDir->keys[curPosList[posInd] - 1 - curDir->numSubDirs]->keyType == KEY_TYPE_INT)
 				{
-					ret = regMgrGetKeyInt(curDir->name, curDir->keys[curPos - 1 - curDir->numSubDirs]->keyName);
+					ret = regMgrGetKeyInt(curDir->name, curDir->keys[curPosList[posInd] - 1 - curDir->numSubDirs]->keyName);
 					sprintf(buf, "%d", ret);
 				}
-				else if(curDir->keys[curPos - 1 - curDir->numSubDirs]->keyType == KEY_TYPE_STR)
-					ret = sceRegMgrGetKeyStr(curDir->name, curDir->keys[curPos - 1 - curDir->numSubDirs]->keyName, buf, 2048);
+				else if(curDir->keys[curPosList[posInd] - 1 - curDir->numSubDirs]->keyType == KEY_TYPE_STR)
+					ret = sceRegMgrGetKeyStr(curDir->name, curDir->keys[curPosList[posInd] - 1 - curDir->numSubDirs]->keyName, buf, 2048);
 				//else if(curDir->keys[curPos - 1 - curDir->numSubDirs]->keyType == KEY_TYPE_BIN)
 					//ret = sceRegMgrGetKeyBin(curDir->name, curDir->keys[curPos - 1 - curDir->numSubDirs]->keyName, buf, 2048);
 				
 				if(ret >= 0)
 				{
-					initImeDialog(curDir->keys[curPos - 1 - curDir->numSubDirs]->keyName, buf, 2048);
+					initImeDialog(curDir->keys[curPosList[posInd] - 1 - curDir->numSubDirs]->keyName, buf, 2048);
 					writeDir = curDir;
-					keyIndex = curPos - 1 - curDir->numSubDirs;
+					keyIndex = curPosList[posInd] - 1 - curDir->numSubDirs;
 				}
 				
 			}
@@ -1115,7 +1122,7 @@ int main()
 		else if(pressedButtons & SCE_CTRL_CIRCLE && curDir->parent)
 		{
 			curDir = curDir->parent;
-			curPos = 0;
+			posInd--;
 			top = 0;
 		}
 		
