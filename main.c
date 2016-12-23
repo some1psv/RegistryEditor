@@ -11,6 +11,7 @@
 #include "ime_dialog.h"
 
 // Store positions so that the right item is selected when the user presses the back button
+int topList[10] = {0};
 int curPosList[10] = {0};
 int posInd = 0;
 
@@ -929,7 +930,8 @@ int regMgrGetKeyInt(char *path, char *keyName)
 int main()
 {
 	curPosList[0] = 1;
-	int curSize = 0, top = 0, ret = 0, imeStatus = 0, keyIndex = 0;
+	topList[0] = 0;
+	int curSize = 0, ret = 0, imeStatus = 0, keyIndex = 0;
 	int holdButtons = 0, pressedButtons = 0;
 	int writeRet = 0;
 	char buf[2048];
@@ -977,15 +979,15 @@ int main()
 		}
 		
 		curSize = curDir->numSubDirs + curDir->numKeys + 1;
-		drawScrollBar(top, curSize);
+		drawScrollBar(topList[posInd], curSize);
 		
-		if(curDir->parent && !top)
+		if(curDir->parent && !topList[posInd])
 			vita2d_pgf_draw_text(pgf, 20.0f, 4.0f * FONT_Y_SPACE, (!curPosList[posInd]) ? GREEN : CYAN, FONT_SIZE, "..");
 		
-		for(int i = top; i < curDir->numSubDirs && (i - top) < MAX_POSITION; i++)
+		for(int i = topList[posInd]; i < curDir->numSubDirs && (i - topList[posInd]) < MAX_POSITION; i++)
 		{
 			uint32_t color = CYAN;
-			float y = (5.0f * FONT_Y_SPACE) + ((i - top) * FONT_Y_SPACE);
+			float y = (5.0f * FONT_Y_SPACE) + ((i - topList[posInd]) * FONT_Y_SPACE);
 			
 			if(i == curPosList[posInd] - 1)
 				color = GREEN;
@@ -993,10 +995,10 @@ int main()
 			vita2d_pgf_draw_text(pgf, 20.0f, y, color, FONT_SIZE, curDir->subdirs[i]->name + strlen(curDir->name));
 		}
 		
-		for(int i = (top < curDir->numSubDirs) ? 0 : top - curDir->numSubDirs; i < curDir->numKeys && (i - (top - curDir->numSubDirs)) < MAX_POSITION; i++)
+		for(int i = (topList[posInd] < curDir->numSubDirs) ? 0 : topList[posInd] - curDir->numSubDirs; i < curDir->numKeys && (i - (topList[posInd] - curDir->numSubDirs)) < MAX_POSITION; i++)
 		{
 			uint32_t color = WHITE;
-			float y = ((5.0f + curDir->numSubDirs) * FONT_Y_SPACE) + ((i - top) * FONT_Y_SPACE);
+			float y = ((5.0f + curDir->numSubDirs) * FONT_Y_SPACE) + ((i - topList[posInd]) * FONT_Y_SPACE);
 			
 			if(curDir->keys[i]->keyType == KEY_TYPE_BIN)
 				color = RED;
@@ -1058,10 +1060,10 @@ int main()
 		{			
 			curPosList[posInd] = (curPosList[posInd] + 1) % curSize;
 			
-			if(curPosList[posInd] - top >= MAX_POSITION && curSize > MAX_POSITION && top < (curSize - MAX_POSITION - 1))
-				top++;
+			if(curPosList[posInd] - topList[posInd] >= MAX_POSITION && curSize > MAX_POSITION && topList[posInd] < (curSize - MAX_POSITION - 1))
+				topList[posInd]++;
 			else if(curPosList[posInd] == 0 && curSize > MAX_POSITION)
-				top = 0;
+				topList[posInd] = 0;
 		}
 		else if(holdButtons & SCE_CTRL_UP || holdButtons & SCE_CTRL_LEFT_ANALOG_UP)
 		{
@@ -1070,11 +1072,11 @@ int main()
 				curPosList[posInd] = curSize - 1;
 				
 				if(curSize > MAX_POSITION)
-				top = curSize - MAX_POSITION - 1;
+				topList[posInd] = curSize - MAX_POSITION - 1;
 			}
 			
-			if(curPosList[posInd] <= top && top && curSize > MAX_POSITION)
-				top--;
+			if(curPosList[posInd] <= topList[posInd] && topList[posInd] && curSize > MAX_POSITION)
+				topList[posInd]--;
 		}
 		
 		if(pressedButtons & SCE_CTRL_CROSS)
@@ -1087,13 +1089,15 @@ int main()
 				}
 				
 				curPosList[posInd] = 0;
-				top = 0;
+				topList[posInd] = 0;
 			}
 			else if(curPosList[posInd]- 1 < curDir->numSubDirs && curDir->numSubDirs > 0)
 			{
 				curDir = curDir->subdirs[curPosList[posInd] - 1];
-				curPosList[++posInd] = 0;
-				top = 0;
+
+				posInd++;
+				curPosList[posInd] = 0;
+				topList[posInd] = 0;
 			}
 			else
 			{
@@ -1123,7 +1127,6 @@ int main()
 		{
 			curDir = curDir->parent;
 			posInd--;
-			top = 0;
 		}
 		
 		if(writeRet < 0)
